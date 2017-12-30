@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import uuid
-import pickle
 import os
-import time
-import logging
 import sys
+import uuid
+import time
+import pickle
+import socket
+import logging
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
@@ -44,9 +45,18 @@ else:
 zk = KazooClient(hosts='127.0.0.1:2181')
 zk.start()
 
+def get_free_tcp_port():
+    tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp.bind(('', 0))
+    addr, port = tcp.getsockname()
+    tcp.close()
+    return port
+
+port = get_free_tcp_port()
+
 while True:
     try:
-        zk.create('/volumn/%s' % config['id'], b'localhost:8000', ephemeral=True, makepath=True)
+        zk.create('/volumn/%s' % config['id'], ('http://%s:%d' % ('localhost', port)).encode(), ephemeral=True, makepath=True)
         logger.info('Registered in zookeeper')
         break
     except NodeExistsError as e:
@@ -54,7 +64,7 @@ while True:
         time.sleep(1)
 
 def main():
-    volumn = Volumn(logger, 'localhost', 8000)
+    volumn = Volumn(logger, 'localhost', port)
     volumn.start()
 
 if __name__ == '__main__':

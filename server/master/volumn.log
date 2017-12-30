@@ -1,0 +1,3 @@
+2017-12-31 01:22:55,556 INFO    : Connecting to 127.0.0.1:2181
+2017-12-31 01:22:55,567 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-31 01:22:55,567 INFO    : Start serving at localhost:55087

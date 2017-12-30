@@ -1,0 +1,30 @@
+2017-12-30 22:32:27,715 INFO    : Connecting to 127.0.0.1:2181
+2017-12-30 22:32:27,725 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-30 22:32:27,732 INFO    : Registered in zookeeper
+2017-12-30 22:32:27,733 INFO    : Start serving at localhost:8000
+2017-12-30 22:37:23,829 INFO    : Connecting to 127.0.0.1:2181
+2017-12-30 22:37:23,839 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-30 22:37:23,847 INFO    : Registered in zookeeper
+2017-12-30 22:37:23,847 INFO    : Start serving at localhost:8000
+2017-12-30 22:53:46,210 INFO    : Connecting to 127.0.0.1:2181
+2017-12-30 22:53:46,220 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-30 22:54:05,601 INFO    : Connecting to 127.0.0.1:2181
+2017-12-30 22:54:05,612 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-30 22:54:05,621 INFO    : Registered in zookeeper
+2017-12-30 22:54:05,621 INFO    : Start serving at localhost:8000
+2017-12-30 23:17:59,971 INFO    : Connecting to 127.0.0.1:2181
+2017-12-30 23:17:59,980 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-30 23:17:59,988 INFO    : Registered in zookeeper
+2017-12-30 23:17:59,989 INFO    : Start serving at localhost:8000
+2017-12-30 23:24:27,002 INFO    : Connecting to 127.0.0.1:2181
+2017-12-30 23:24:27,010 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-30 23:24:27,019 INFO    : Registered in zookeeper
+2017-12-30 23:24:27,020 INFO    : Start serving at localhost:8000
+2017-12-31 01:09:39,062 INFO    : Connecting to 127.0.0.1:2181
+2017-12-31 01:09:39,071 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-31 01:09:39,079 INFO    : Registered in zookeeper
+2017-12-31 01:09:39,080 INFO    : Start serving at localhost:8000
+2017-12-31 01:13:43,839 INFO    : Connecting to 127.0.0.1:2181
+2017-12-31 01:13:43,850 INFO    : Zookeeper connection established, state: CONNECTED
+2017-12-31 01:13:43,858 INFO    : Registered in zookeeper
+2017-12-31 01:13:43,858 INFO    : Start serving at localhost:34283

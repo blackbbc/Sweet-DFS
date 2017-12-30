@@ -2,6 +2,7 @@
 
 import os
 import pickle
+import shutil
 
 from xmlrpc.server import SimpleXMLRPCServer
 
@@ -76,11 +77,31 @@ class Volumn(object):
         fdoc['fkey'] = fkey
         fdoc['offset'] = offset
         fdoc['size'] = size
+        fdoc['delete'] = False
 
         self.fdb[fkey] = fdoc
         self._update_fdb()
 
         return True
+
+
+    def update_file(self, fid, data):
+        pass
+
+    def delete_file(self, fid):
+        vid, fkey = fid.split(',')
+        vid = int(vid)
+        fkey = int(fkey)
+
+        fdoc = self.fdb[fkey]
+        fdoc['delete'] = True
+
+        self._update_fdb()
+
+        return True
+
+    def delete_volumn(self, vid):
+        pass
 
     def download(self, fid):
         vid, fkey = fid.split(',')
@@ -99,8 +120,15 @@ class Volumn(object):
 
         return data
 
+    def balance(self):
+        pass
+
     def status(self):
-        return self.vdb
+        status = dict()
+        total, used, free = shutil.disk_usage(__file__)
+        status['free'] = free
+        status['vdb'] = self.vdb
+        return status
 
     def start(self):
         self.logger.info('Start serving at %s:%d' % (self.host, self.port))
