@@ -4,6 +4,7 @@ import sys
 import time
 import socket
 import logging
+import uuid
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
@@ -56,7 +57,7 @@ def main():
 
     while True:
         try:
-            zk.create('/master/http://%s:%d' % ('localhost', port), ephemeral=True, makepath=True )
+            zk.create('/master/%s' % uuid.uuid4().hex, ('http://%s:%d' % ('localhost', port)).encode(), ephemeral=True, makepath=True )
             logger.info('Registered in zookeeper')
             break
         except NodeExistsError as e:
