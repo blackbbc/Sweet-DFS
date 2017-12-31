@@ -41,8 +41,8 @@ class Master(object):
         pickle.dump(self.db, open('db', 'wb'))
 
     def update_volumn(self, volumns):
-        self.act_vol_serv = dict()
-        self.act_vol_proxy = dict()
+        self.act_vol_serv.clear()
+        self.act_vol_proxy.clear()
         for volumn in volumns:
             self.act_vol_serv[volumn[0]] = volumn[1]
             self.act_vol_proxy[volumn[0]] = ServerProxy(volumn[1])
