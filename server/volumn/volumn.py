@@ -1,14 +1,16 @@
 # -*- coding: utf-8
 
 import os
+import random
 import pickle
 import shutil
 
+from xmlrpc.client import ServerProxy
 from xmlrpc.server import SimpleXMLRPCServer
 
 class Volumn(object):
 
-    _rpc_methods = ['assign_volumn', 'store', 'download', 'status']
+    _rpc_methods = ['assign_volumn', 'store', 'replica', 'download', 'status']
 
     def __init__(self, logger, host, port):
         self.logger = logger
@@ -22,6 +24,8 @@ class Volumn(object):
         if os.path.isfile('fdb'):
             self.fdb = pickle.load(open('fdb', 'rb'))
 
+        self.act_mst_proxy = dict()
+
         self.serv = SimpleXMLRPCServer(
             (self.host, self.port),
             logRequests=True)
@@ -34,6 +38,12 @@ class Volumn(object):
 
     def _update_fdb(self):
         pickle.dump(self.fdb, open('fdb', 'wb'))
+
+    def update_master(self, masters):
+        self.act_mst_proxy = { master: ServerProxy(master) for master in masters }
+
+    def get_master(self):
+        return random.choice(list(self.act_mst_proxy.values()))
 
     def assign_volumn(self, vid, size):
         path = 'data/%s' % vid
@@ -57,6 +67,21 @@ class Volumn(object):
         return True
 
     def store(self, fid, data):
+        vid, fkey = fid.split(',')
+        vid = int(vid)
+
+        self.replica(fid, data)
+        master = self.get_master()
+        volumns = master.find_volumn(vid)
+
+        for volumn in volumns:
+            if volumn != 'http://%s:%d' % (self.host, self.port):
+                s = ServerProxy(volumn)
+                s.replica(fid, data)
+
+        return True
+
+    def replica(self, fid, data):
         data = data.data
         vid, fkey = fid.split(',')
         vid = int(vid)
@@ -83,6 +108,7 @@ class Volumn(object):
         self._update_fdb()
 
         return True
+
 
 
     def update_file(self, fid, data):

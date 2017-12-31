@@ -43,7 +43,6 @@ else:
     pickle.dump(config, open('config', 'wb'))
 
 zk = KazooClient(hosts='127.0.0.1:2181')
-zk.start()
 
 def get_free_tcp_port():
     tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,18 +52,30 @@ def get_free_tcp_port():
     return port
 
 port = get_free_tcp_port()
+volumn = Volumn(logger, 'localhost', port)
 
-while True:
-    try:
-        zk.create('/volumn/%s' % config['id'], ('http://%s:%d' % ('localhost', port)).encode(), ephemeral=True, makepath=True)
-        logger.info('Registered in zookeeper')
-        break
-    except NodeExistsError as e:
-        logger.warn('Node exists. Retry after 1s...')
-        time.sleep(1)
+
+@zk.ChildrenWatch('/master')
+def on_volumn_change(children):
+    event = []
+    for child in children:
+        data, _ = zk.get('/master/%s' % child)
+        event.append(data.decode())
+    volumn.update_master(event)
+
 
 def main():
-    volumn = Volumn(logger, 'localhost', port)
+    zk.start()
+
+    while True:
+        try:
+            zk.create('/volumn/%s' % config['id'], ('http://%s:%d' % ('localhost', port)).encode(), ephemeral=True, makepath=True)
+            logger.info('Registered in zookeeper')
+            break
+        except NodeExistsError as e:
+            logger.warn('Node exists. Retry after 1s...')
+            time.sleep(1)
+
     volumn.start()
 
 if __name__ == '__main__':
