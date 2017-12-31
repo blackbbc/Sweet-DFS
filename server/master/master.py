@@ -17,10 +17,15 @@ class Master(object):
         self.host = host
         self.port = port
 
-        self.vdb = dict()
+        self.db = dict()
 
-        if os.path.isfile('vdb'):
-            self.vdb = pickle.load(open('vdb', 'rb'))
+        if os.path.isfile('db'):
+            self.db = pickle.load(open('db', 'rb'))
+
+        if 'vdb' not in self.db:
+            self.db['vdb'] = dict()
+            self.db['vid'] = 0
+            self.db['fkey'] = 0
 
         self.act_vol_serv = dict()
         self.act_vol_proxy = dict()
@@ -32,8 +37,8 @@ class Master(object):
         for name in self._rpc_methods:
             self.serv.register_function(getattr(self, name))
 
-    def _update_vdb(self):
-        pickle.dump(self.vdb, open('vdb', 'wb'))
+    def _update_db(self):
+        pickle.dump(self.db, open('db', 'wb'))
 
     def update_volumn(self, volumns):
         self.act_vol_serv = dict()
@@ -43,14 +48,13 @@ class Master(object):
             self.act_vol_proxy[volumn[0]] = ServerProxy(volumn[1])
 
     def assign_volumn(self, size):
-        # TODO: 分配vid
-
-        vid = 1
+        vid = self.db['vid']
+        self.db['vid'] += 1
 
         vids = random.sample(self.act_vol_serv.keys(), 2)
-        self.vdb[vid] = vids
+        self.db['vdb'][vid] = vids
 
-        self._update_vdb()
+        self._update_db()
 
         for vvid in vids:
             self.act_vol_proxy[vvid].assign_volumn(vid, size)
@@ -58,11 +62,17 @@ class Master(object):
         return True
 
     def assign_fid(self):
-        fid = '1,1'
+        vid = random.choice(list(self.db['vdb'].keys()))
+        fkey = self.db['fkey']
+        self.db['fkey'] += 1
+
+        self._update_db()
+
+        fid = '%d,%d' % (vid, fkey)
         return fid
 
     def find_volumn(self, vid):
-        vids = self.vdb[vid]
+        vids = self.db['vdb'][vid]
         addrs = []
 
         for vid in vids:

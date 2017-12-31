@@ -6,6 +6,7 @@ import socket
 import logging
 
 from kazoo.client import KazooClient
+from kazoo.exceptions import NodeExistsError
 
 from master import Master
 
@@ -52,6 +53,15 @@ def on_volumn_change(children):
 
 def main():
     zk.start()
+
+    while True:
+        try:
+            zk.create('/master/http://%s:%d' % ('localhost', port), ephemeral=True, makepath=True )
+            logger.info('Registered in zookeeper')
+            break
+        except NodeExistsError as e:
+            logger.warn('Node exists. Retry after 1s...')
+            time.sleep(1)
 
     master.start()
 
