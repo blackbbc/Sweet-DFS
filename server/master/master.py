@@ -65,7 +65,7 @@ class Master(SyncObj):
 
     def assign_fid(self):
         vid = random.choice(list(self.db.keys()))
-        fkey = self.inc_fkey(sync=True)
+        fkey = self.fkey.inc(sync=True)
 
         fid = '%d,%d' % (vid, fkey)
         return fid
