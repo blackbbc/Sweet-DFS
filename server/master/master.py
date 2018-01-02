@@ -44,6 +44,7 @@ class Master(SyncObj):
     def update_master(self, masters):
         pass
 
+    # 检查volumn下线的情况，搬运
     def update_volumn(self, volumns):
         self.act_vol_serv.clear()
         self.act_vol_proxy.clear()

@@ -10,7 +10,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 class Volumn(object):
 
-    _rpc_methods = ['assign_volumn', 'store', 'replica', 'download', 'status']
+    _rpc_methods = ['assign_volumn', 'store', 'replica', 'download', 'status', 'migrate_volumn_to', 'migrate_volumn_from']
 
     def __init__(self, logger, host, port):
         self.logger = logger
@@ -63,6 +63,38 @@ class Volumn(object):
 
         self.vdb[vid] = vdoc
         self._update_vdb()
+
+        return True
+
+    def migrate_volumn_to(self, vid, to_addr):
+        vdoc = self.vdb[vid]
+        path = vdoc['path']
+
+        s = ServerProxy(to_addr)
+
+        with open(path, 'rb') as f:
+            while True:
+                data = f.read(64*1024*1024)
+                if data:
+                    s.migrate_volumn_from(vid, data, vdoc)
+                else:
+                    s.migrate_volumn_from(vid, data, vdoc, True)
+                    break
+
+        return True
+
+    def migrate_volumn_from(self, vid, data, vdoc, done=False):
+        path = vdoc['path']
+
+        if not os.path.isdir('data'):
+            os.mkdir('data')
+
+        with open(path, 'ab') as f:
+            f.write(data.data)
+
+        if done:
+            self.vdb[vid] = vdoc
+            self._update_vdb()
 
         return True
 
