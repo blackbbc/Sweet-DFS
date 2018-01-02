@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <title>Sweet-DFS</title>
+  </head>
+  <body>
+    <table border="1">
+      <tr>
+        <th align="left">文件名</th>
+        <th>大小</th>
+        <th>操作</th>
+      </tr>
+      {% for file in files.values() %}
+      <tr>
+        <th align="left">{{ file['filename'] }}</th>
+        <th>{{ file['size']|format_size }}</th>
+        <th>
+          <a href="/download/{{ file['fid'] }}">下载</a>
+          <a href="/delete/{{ file['fid'] }}">删除</a>
+        </th>
+      </tr>
+      {% endfor %}
+    </table>
+  </body>
+</html>
