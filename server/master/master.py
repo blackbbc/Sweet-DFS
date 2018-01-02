@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
 import pickle
 import shutil
 import random
+import _thread
 
 from xmlrpc.client import ServerProxy
 from xmlrpc.server import SimpleXMLRPCServer
@@ -44,8 +46,51 @@ class Master(SyncObj):
     def update_master(self, masters):
         pass
 
+    def _recover(self, vid, dead_vid, from_vid, from_proxy, to_vid, to_addr):
+        self.logger.info('Migrate volumn from %s to %s after 10 minutes' % (from_vid, to_vid))
+
+        t = 60
+
+        while t > 0:
+            time.sleep(1)
+            if dead_vid in self.act_vol_serv.keys():
+                self.logger.info('Volumn %s becomes live. Stop recover' % dead_vid)
+                _thread.exit()
+            t -= 1
+
+        self.logger.info('Begin to migrate volumn from %s to %s...!' % (from_vid, to_vid))
+        from_proxy.migrate_volumn_to(vid, to_addr)
+        self.db[vid].remove(from_vid)
+        self.db[vid].append(to_vid)
+        self.logger.info('Migrate volumn from %s to %s succeed!' % (from_vid, to_vid))
+
     # 检查volumn下线的情况，搬运
     def update_volumn(self, volumns):
+        if self._isLeader():
+            old_volumns = set(self.act_vol_serv.keys())
+            new_volumns = set([volumn[0] for volumn in volumns])
+
+            off_volumns = list(old_volumns - new_volumns)
+
+            if off_volumns:
+                self.logger.info('{} volumns become offline'.format(off_volumns))
+
+            for off_volumn in off_volumns:
+                for vid, vvids in self.db.items():
+                    if off_volumn in vvids:
+                        for recov_vid in vvids:
+                            if recov_vid != off_volumn:
+                                from_vid = recov_vid
+                                from_proxy = self.act_vol_proxy[recov_vid]
+                                to_vid = random.choice(list(set(self.act_vol_serv.keys()) - set(vvids)))
+                                to_addr = self.act_vol_serv[to_vid]
+
+                                # 开一个线程去传
+                                _thread.start_new_thread(self._recover, (vid, off_volumn, from_vid, from_proxy, to_vid, to_addr))
+
+                                break
+
+
         self.act_vol_serv.clear()
         self.act_vol_proxy.clear()
         for volumn in volumns:
