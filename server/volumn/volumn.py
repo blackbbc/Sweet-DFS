@@ -78,12 +78,13 @@ class Volumn(object):
                 if data:
                     s.migrate_volumn_from(vid, data, vdoc)
                 else:
-                    s.migrate_volumn_from(vid, data, vdoc, True)
+                    fdocs = {k: v for k, v in self.fdb if k.startwith('%d,' % vid)}
+                    s.migrate_volumn_from(vid, data, vdoc, fdocs, True)
                     break
 
         return True
 
-    def migrate_volumn_from(self, vid, data, vdoc, done=False):
+    def migrate_volumn_from(self, vid, data, vdoc, fdocs=None, done=False):
         path = vdoc['path']
 
         if not os.path.isdir('data'):
@@ -95,11 +96,13 @@ class Volumn(object):
         if done:
             self.vdb[vid] = vdoc
             self._update_vdb()
+            self.fdb = {**self.fdb, **fdocs}
+            self._update_fdb()
 
         return True
 
     def store(self, fid, data):
-        vid, fkey = fid.split(',')
+        vid, _ = fid.split(',')
         vid = int(vid)
 
         self.replica(fid, data)
@@ -115,9 +118,8 @@ class Volumn(object):
 
     def replica(self, fid, data):
         data = data.data
-        vid, fkey = fid.split(',')
+        vid, _ = fid.split(',')
         vid = int(vid)
-        fkey = int(fkey)
 
         vdoc = self.vdb[vid]
         path = vdoc['path']
@@ -131,27 +133,24 @@ class Volumn(object):
             f.write(data)
 
         fdoc = dict()
-        fdoc['fkey'] = fkey
+        fdoc['fid'] = fid
         fdoc['offset'] = offset
         fdoc['size'] = size
         fdoc['delete'] = False
 
-        self.fdb[fkey] = fdoc
+        self.fdb[fid] = fdoc
         self._update_fdb()
 
         return True
-
-
 
     def update_file(self, fid, data):
         pass
 
     def delete_file(self, fid):
-        vid, fkey = fid.split(',')
+        vid, _ = fid.split(',')
         vid = int(vid)
-        fkey = int(fkey)
 
-        fdoc = self.fdb[fkey]
+        fdoc = self.fdb[fid]
         fdoc['delete'] = True
 
         self._update_fdb()
@@ -162,12 +161,11 @@ class Volumn(object):
         pass
 
     def download(self, fid):
-        vid, fkey = fid.split(',')
+        vid, _ = fid.split(',')
         vid = int(vid)
-        fkey = int(fkey)
 
         vdoc = self.vdb[vid]
-        fdoc = self.fdb[fkey]
+        fdoc = self.fdb[fid]
         path = vdoc['path']
         offset = fdoc['offset']
         size = fdoc['size']

@@ -16,7 +16,7 @@ import humanfriendly
 from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, render_template, send_file, jsonify
 from werkzeug.utils import secure_filename
 
 # 获取logger实例，如果参数为空则返回root logger
@@ -75,6 +75,15 @@ def format_size(size):
 @app.route('/')
 def index():
     return render_template('index.html', files=fdb)
+
+@app.route('/assign/volumn', methods=['POST', 'GET'])
+def assign_volumn():
+    size = request.form['size']
+    master = get_master()
+
+    vid = master.assign_volumn(int(size))
+
+    return jsonify({'vid': vid})
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
