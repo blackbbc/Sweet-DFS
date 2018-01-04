@@ -27,7 +27,7 @@ logger = logging.getLogger()
 formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
 
 # 文件日志
-file_handler = logging.FileHandler("volumn.log")
+file_handler = logging.FileHandler("client.log")
 file_handler.setFormatter(formatter)  # 可以通过setFormatter指定输出格式
 
 # 控制台日志

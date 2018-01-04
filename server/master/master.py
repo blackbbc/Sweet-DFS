@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
+sys.path.insert(0, '../util')
 import time
 import pickle
 import shutil
@@ -12,11 +14,14 @@ from xmlrpc.server import SimpleXMLRPCServer
 from pysyncobj import SyncObj, SyncObjConf, replicated
 from pysyncobj.batteries import ReplCounter, ReplDict
 
+from rwlock import RWLock
+from threadxmlrpc import ThreadXMLRPCServer
+
 import config
 
 class Master(SyncObj):
 
-    _rpc_methods = ['assign_volumn', 'assign_fid', 'find_volumn']
+    _rpc_methods = ['assign_volumn', 'assign_fid', 'find_volumn', 'status']
 
     def __init__(self, logger, host, port):
         cfg = SyncObjConf()
@@ -24,7 +29,7 @@ class Master(SyncObj):
         cfg.logCompactionMinTime = 10
         cfg.useFork = True
 
-        self.serv = SimpleXMLRPCServer(
+        self.serv = ThreadXMLRPCServer(
             (host, port),
             logRequests=True)
 
@@ -125,6 +130,19 @@ class Master(SyncObj):
                 addrs.append(self.act_vol_serv[vid])
 
         return addrs
+
+    def status(self):
+        status = dict()
+
+        vol_status = dict()
+        for vol_serv, vol_serv_proxy in self.act_vol_proxy:
+            vv = vol_serv_proxy.status()
+            vol_status[vol_serv] = vv
+
+        for vid, vvids in self.db:
+            status[vid] = vvids
+
+        return vid
 
     def start(self):
         self.logger.info('Start serving at %s:%d' % (self.host, self.port))
