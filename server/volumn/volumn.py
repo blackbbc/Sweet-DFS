@@ -152,7 +152,9 @@ class Volumn(object):
             vdoc = self.vdb[vid]
             path = vdoc['path']
             offset = vdoc['counter']
+
             size = len(data)
+            vdoc['counter'] += size
 
             with open(path, 'r+b') as f:
                 f.seek(offset)
@@ -164,8 +166,8 @@ class Volumn(object):
             fdoc['size'] = size
             fdoc['delete'] = False
 
-            vdoc['counter'] += size
-            self.vdb.update()
+            self.vdb[vid] = vdoc
+            self._update_vdb()
 
             self.fdb[fid] = fdoc
             self._update_fdb()

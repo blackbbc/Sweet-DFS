@@ -21,7 +21,7 @@ import config
 
 class Master(SyncObj):
 
-    _rpc_methods = ['assign_volumn', 'assign_fid', 'find_volumn', 'status']
+    _rpc_methods = ['assign_volumn', 'assign_fid', 'find_volumn', 'find_writable_volumn', 'status']
 
     def __init__(self, logger, host, port):
         cfg = SyncObjConf()
@@ -56,13 +56,13 @@ class Master(SyncObj):
     def update_master(self, masters):
         pass
 
-    def _recover(self, vid, from_vid, to_vid):
+    def _recover(self, vid, dead_vid, from_vid, to_vid):
         from_proxy = self.act_vol_proxy[from_vid]
         to_addr = self.act_vol_serv[to_vid]
 
         self.logger.info('Begin to migrate volumn %d from %s to %s...!' % (vid, from_vid, to_vid))
         from_proxy.migrate_volumn_to(vid, to_addr)
-        self.db[vid].remove(from_vid)
+        self.db[vid].remove(dead_vid)
         self.db[vid].append(to_vid)
         self.logger.info('Migrate volumn %d from %s to %s succeed!' % (vid, from_vid, to_vid))
 
@@ -86,7 +86,7 @@ class Master(SyncObj):
                         avl_vids = list(set(self.act_vol_serv.keys()) - set(vvids))
                         if avl_vids:
                             to_vid = random.choice(avl_vids)
-                            _thread.start_new_thread(self._recover, (from_vid, to_vid))
+                            _thread.start_new_thread(self._recover, (vid, dead_vid, from_vid, to_vid))
                         else:
                             self.logger.warn('No available volumns to migrate')
                         break
@@ -137,9 +137,6 @@ class Master(SyncObj):
         return vid
 
     def assign_fid(self):
-        if not self.writable_vid:
-            return ''
-
         vid = random.choice(list(self.writable_vid))
         fkey = self.fkey.inc(sync=True)
 
@@ -155,6 +152,12 @@ class Master(SyncObj):
                 addrs.append(self.act_vol_serv[vid])
 
         return addrs
+
+    def find_writable_volumn(self, vid):
+        if vid in self.writable_vid:
+            return find_volumn(vid)
+        else:
+            return []
 
     def status(self):
         res = dict()

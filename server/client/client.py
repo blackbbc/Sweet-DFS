@@ -150,6 +150,8 @@ def upload(path):
 
                 usize -= CHUNK_SIZE
 
+                print('%d%% uploaded.' % ((size - usize) / size * 100))
+
         data = json.dumps(fids).encode()
 
         fid = _assign_fid()
@@ -234,8 +236,36 @@ def assign(size):
 
     print(vid)
 
-def delete():
+def delete(filename):
+    # 大文件的话，需要检查所有的chunk都可写
+
+    # if not os.path.isfile(path):
+        # print('%s not exist' % path)
+        # return
+
+    # fdoc = fdb[filename]
+
+    # master = get_master()
+
+    # fid = fdoc['fid']
+    # vid, fkey = fid.split(',')
+    # volumns = master.find_writable_volumn(int(vid))
+
+    # if fdoc['chunk']:
+
+        # if not volumns:
+            # print('Delete file failed. Read only volumn')
+            # return
+
+        # for volumn in volumns:
+            # s = ServerProxy(volumn)
+            # s.delete_file(fid)
+
+        # print('Delete %s success.' % filename)
+    # else:
+
     pass
+
 
 def status():
     master = get_master()
@@ -263,6 +293,8 @@ def main():
             download(cmd[1])
         elif cmd[0] == 'assign':
             assign(cmd[1])
+        elif cmd[0] == 'delete':
+            delete(cmd[1])
         elif cmd[0] == 'status':
             status()
 
