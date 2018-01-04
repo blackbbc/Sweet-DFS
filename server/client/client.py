@@ -77,6 +77,24 @@ def ls():
 
 CHUNK_SIZE = 64 * 1024 * 1024
 
+def _assign_fid():
+    while act_master_proxy:
+        try:
+            fid = get_master().assign_fid()
+            return fid
+        except:
+            continue
+
+    return ''
+
+def _store(volumns, fid, data):
+    if volumns:
+        volumn = ServerProxy(random.choice(volumns))
+        res = volumn.store(fid, data)
+        return res
+
+    return False
+
 def upload(path):
 
     if not os.path.isfile(path):
@@ -92,12 +110,17 @@ def upload(path):
         with open(path, 'rb') as file:
             data = file.read()
 
-        fid = master.assign_fid()
+        fid = _assign_fid()
+        if not fid:
+            print('Upload failed. No available volumns')
+            return
+
         vid, fkey = fid.split(',')
         volumns = master.find_volumn(int(vid))
-        volumn = ServerProxy(random.choice(volumns))
 
-        volumn.store(fid, data)
+        if not _store(volumns, fid, data):
+            print('Upload failed. Volumn server not work.')
+            return
 
         fdoc = {'filename': filename, 'fid': fid, 'size': size, 'chunk': True}
         fdb[filename] = fdoc
@@ -112,12 +135,16 @@ def upload(path):
                 data = file.read(CHUNK_SIZE)
                 csize = len(data)
 
-                fid = master.assign_fid()
+                fid = _assign_fid()
+                if not fid:
+                    print('Upload failed. No available volumns')
+                    return
                 vid, fkey = fid.split(',')
                 volumns = master.find_volumn(int(vid))
-                volumn = ServerProxy(random.choice(volumns))
 
-                volumn.store(fid, data)
+                if not _store(volumns, fid, data):
+                    print('Upload failed. Volumn server not work.')
+                    return
 
                 fids.append(fid)
 
@@ -125,12 +152,16 @@ def upload(path):
 
         data = json.dumps(fids).encode()
 
-        fid = master.assign_fid()
+        fid = _assign_fid()
+        if not fid:
+            print('Upload failed. No available volumns')
+            return
         vid, fkey = fid.split(',')
         volumns = master.find_volumn(int(vid))
-        volumn = ServerProxy(random.choice(volumns))
 
-        volumn.store(fid, data)
+        if not _store(volumns, fid, data):
+            print('Upload failed. Volumn server not work.')
+            return
 
         fdoc = {'filename': filename, 'fid': fid, 'size': size, 'chunk': False}
         fdb[filename] = fdoc
@@ -139,7 +170,6 @@ def upload(path):
         print(fid)
 
 def _download(volumns, fid):
-
     while volumns:
         try:
             serv = random.choice(volumns)

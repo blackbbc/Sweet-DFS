@@ -137,6 +137,9 @@ class Master(SyncObj):
         return vid
 
     def assign_fid(self):
+        if not self.writable_vid:
+            return ''
+
         vid = random.choice(list(self.writable_vid))
         fkey = self.fkey.inc(sync=True)
 
