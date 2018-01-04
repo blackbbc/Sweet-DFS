@@ -268,7 +268,7 @@ class Volumn(object):
         status = dict()
         total, used, free = shutil.disk_usage(__file__)
         status['free'] = str(free)
-        status['vdb'] = self.vdb
+        status['vdb'] = {str(vid):vdoc for vid, vdoc in self.vdb.items()}
         return status
 
     def start(self):

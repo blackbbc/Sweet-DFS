@@ -40,19 +40,34 @@ class Master(SyncObj):
         self.host = host
         self.port = port
 
+        self.lock = RWLock()
+
         self.act_vol_serv = dict()
         self.act_vol_proxy = dict()
+        self.writable_vid = list() # 可写的vid
 
         self.vid = ReplCounter()
         self.fkey = ReplCounter()
         self.db = ReplDict()
+
         super(Master, self).__init__(config.addr, config.clusters, cfg, consumers=[self.vid, self.fkey, self.db])
+
 
     def update_master(self, masters):
         pass
 
-    def _recover(self, vid, dead_vid, from_vid, from_proxy, to_vid, to_addr):
-        self.logger.info('Migrate volumn from %s to %s after 10 minutes' % (from_vid, to_vid))
+    def _recover(self, vid, from_vid, to_vid):
+        from_proxy = self.act_vol_proxy[from_vid]
+        to_addr = self.act_vol_serv[to_vid]
+
+        self.logger.info('Begin to migrate volumn %d from %s to %s...!' % (vid, from_vid, to_vid))
+        from_proxy.migrate_volumn_to(vid, to_addr)
+        self.db[vid].remove(from_vid)
+        self.db[vid].append(to_vid)
+        self.logger.info('Migrate volumn %d from %s to %s succeed!' % (vid, from_vid, to_vid))
+
+    def _check(self, dead_vid):
+        self.logger.info('Monitor dead volumn server %s ...' % dead_vid)
 
         t = 60
 
@@ -63,11 +78,18 @@ class Master(SyncObj):
                 _thread.exit()
             t -= 1
 
-        self.logger.info('Begin to migrate volumn from %s to %s...!' % (from_vid, to_vid))
-        from_proxy.migrate_volumn_to(vid, to_addr)
-        self.db[vid].remove(from_vid)
-        self.db[vid].append(to_vid)
-        self.logger.info('Migrate volumn from %s to %s succeed!' % (from_vid, to_vid))
+        for vid, vvids in self.db.items():
+            if dead_vid in vvids:
+                for recov_vid in vvids:
+                    if recov_vid != dead_vid and recov_vid in self.act_vol_serv.keys():
+                        from_vid = recov_vid
+                        avl_vids = list(set(self.act_vol_serv.keys()) - set(vvids))
+                        if avl_vids:
+                            to_vid = random.choice(avl_vids)
+                            _thread.start_new_thread(self._recover, (from_vid, to_vid))
+                        else:
+                            self.logger.warn('No available volumns to migrate')
+                        break
 
     # 检查volumn下线的情况，搬运
     def update_volumn(self, volumns):
@@ -81,26 +103,26 @@ class Master(SyncObj):
                 self.logger.info('{} volumns become offline'.format(off_volumns))
 
             for off_volumn in off_volumns:
-                for vid, vvids in self.db.items():
-                    if off_volumn in vvids:
-                        for recov_vid in vvids:
-                            if recov_vid != off_volumn:
-                                from_vid = recov_vid
-                                from_proxy = self.act_vol_proxy[recov_vid]
-                                to_vid = random.choice(list(set(self.act_vol_serv.keys()) - set(vvids)))
-                                to_addr = self.act_vol_serv[to_vid]
-
-                                # 开一个线程去传
-                                _thread.start_new_thread(self._recover, (vid, off_volumn, from_vid, from_proxy, to_vid, to_addr))
-
-                                break
-
+                _thread.start_new_thread(self._check, (off_volumn,))
 
         self.act_vol_serv.clear()
         self.act_vol_proxy.clear()
+        self.writable_vid.clear()
         for volumn in volumns:
             self.act_vol_serv[volumn[0]] = volumn[1]
             self.act_vol_proxy[volumn[0]] = ServerProxy(volumn[1])
+
+        while not self._isReady():
+            time.sleep(1)
+
+        for vid, vvids in self.db.items():
+            flag = True
+            for vvid in vvids:
+                if vvid not in self.act_vol_serv.keys():
+                    flag = False
+                    break
+            if flag:
+                self.writable_vid.append(vid)
 
     def assign_volumn(self, size):
         vid = self.vid.inc(sync=True)
@@ -115,7 +137,7 @@ class Master(SyncObj):
         return vid
 
     def assign_fid(self):
-        vid = random.choice(list(self.db.keys()))
+        vid = random.choice(list(self.writable_vid))
         fkey = self.fkey.inc(sync=True)
 
         fid = '%d,%d' % (vid, fkey)
@@ -132,17 +154,38 @@ class Master(SyncObj):
         return addrs
 
     def status(self):
-        status = dict()
+        res = dict()
 
         vol_status = dict()
-        for vol_serv, vol_serv_proxy in self.act_vol_proxy:
-            vv = vol_serv_proxy.status()
-            vol_status[vol_serv] = vv
 
-        for vid, vvids in self.db:
-            status[vid] = vvids
+        for vol_serv, vol_serv_proxy in self.act_vol_proxy.items():
+            try:
+                vv = vol_serv_proxy.status()
+                vol_status[vol_serv] = vv
+            except:
+                pass
 
-        return vid
+
+        for vid, vvids in self.db.items():
+            sdoc = dict()
+            ava_nodes = list(set(vol_status.keys()) & set(vvids))
+            sdoc['tat_node_num'] = len(vvids)
+            sdoc['ava_node_num'] = len(ava_nodes)
+
+            if ava_nodes:
+                vol_sdoc = vol_status[ava_nodes[0]]
+                vdoc = vol_sdoc['vdb'][str(vid)]
+                sdoc['total_size'] = vdoc['size']
+                sdoc['used_size'] = vdoc['counter']
+                sdoc['free_size'] = sdoc['total_size'] - sdoc['used_size']
+            else:
+                sdoc['total_size'] = 0
+                sdoc['used_size'] = 0
+                sdoc['free_size'] = 0
+
+            res[str(vid)] = sdoc
+
+        return res
 
     def start(self):
         self.logger.info('Start serving at %s:%d' % (self.host, self.port))

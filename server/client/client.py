@@ -66,9 +66,14 @@ def on_master_change(children):
 def get_master():
     return random.choice(list(act_master_proxy.values()))
 
+def format_size(size):
+    return humanfriendly.format_size(size, binary=True)
+
 def ls():
+    print('{0:<10s} {1:<10s} {2:<10s}'.format('Filename', 'Fid', 'Size'))
     for fdoc in fdb.values():
-        print(fdoc['filename'], fdoc['fid'], humanfriendly.format_size(fdoc['size']))
+        print('{0:<10s} {1:<10s} {2:<10s}'.format(
+            fdoc['filename'], fdoc['fid'], format_size(fdoc['size'])))
 
 CHUNK_SIZE = 64 * 1024 * 1024
 
@@ -133,6 +138,22 @@ def upload(path):
 
         print(fid)
 
+def _download(volumns, fid):
+
+    while volumns:
+        try:
+            serv = random.choice(volumns)
+            volumn = ServerProxy(serv)
+            data = volumn.download(fid).data
+            break
+        except:
+            volumns.remove(serv)
+
+    if volumns:
+        return data
+    else:
+        return None
+
 def download(filename):
     if filename not in fdb:
         print('%s not exist' % filename)
@@ -150,9 +171,11 @@ def download(filename):
 
     volumns = master.find_volumn(int(vid))
 
-    volumn = ServerProxy(random.choice(volumns))
+    data = _download(volumns, fid)
 
-    data = volumn.download(fid).data
+    if not data:
+        print('Download failed. All volumn server not work QAQ.')
+        return
 
     if chunk:
         with open(filename, 'wb') as file:
@@ -164,7 +187,11 @@ def download(filename):
 
         with open(filename, 'wb') as file:
             for fid in fids:
-                data = volumn.download(fid).data
+                data = _download(volumns, fid)
+                if not data:
+                    print('Download failed. All volumn server not work QAQ.')
+                    os.remove(filename)
+                    return
                 file.write(data)
 
         print('Download success')
@@ -181,7 +208,17 @@ def delete():
     pass
 
 def status():
-    pass
+    master = get_master()
+    ss = master.status()
+
+    print('{0:<10s} {1:<10s} {2:<10s} {3:<10s} {4}/{5}'.format('Volumn Id',
+        'Total Size', 'Used Size', 'Free Size', 'Available Node', 'Total Node'))
+    for vid, sdoc in ss.items():
+        print('{0:<10s} {1:<10s} {2:<10s} {3:<10s} {4}/{5}'.format(vid,
+            format_size(sdoc['total_size']),
+            format_size(sdoc['used_size']),
+            format_size(sdoc['free_size']),
+            sdoc['ava_node_num'], sdoc['tat_node_num']))
 
 def main():
     while True:
