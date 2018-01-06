@@ -3,6 +3,7 @@
 import os
 import sys
 sys.path.insert(0, '../util')
+import traceback
 import random
 import pickle
 import shutil
@@ -32,7 +33,7 @@ class Volumn(object):
         if os.path.isfile('fdb'):
             self.fdb = pickle.load(open('fdb', 'rb'))
 
-        self.act_mst_proxy = dict()
+        self.act_mst_serv = list()
 
         self.serv = ThreadXMLRPCServer(
             (self.host, self.port),
@@ -48,10 +49,10 @@ class Volumn(object):
         pickle.dump(self.fdb, open('fdb', 'wb'))
 
     def update_master(self, masters):
-        self.act_mst_proxy = { master: ServerProxy(master) for master in masters }
+        self.act_mst_serv = masters
 
     def get_master(self):
-        return random.choice(list(self.act_mst_proxy.values()))
+        return ServerProxy(random.choice(self.act_mst_serv))
 
     def assign_volumn(self, vid, size):
         path = 'data/%s' % vid
@@ -124,8 +125,6 @@ class Volumn(object):
         vid = int(vid)
 
         try:
-            self.lock.acquire_read()
-
             self.replica(fid, data)
             master = self.get_master()
             volumns = master.find_volumn(vid)
@@ -136,47 +135,43 @@ class Volumn(object):
                     s.replica(fid, data)
 
             return True
-        except:
+        except Exception as e:
+            self.logger.exception('Got an exception')
             return False
-        finally:
-            self.lock.release()
 
     def replica(self, fid, data):
         data = data.data
         vid, _ = fid.split(',')
         vid = int(vid)
 
-        try:
-            self.lock.acquire_read()
+        self.lock.acquire_write()
 
-            vdoc = self.vdb[vid]
-            path = vdoc['path']
-            offset = vdoc['counter']
+        vdoc = self.vdb[vid]
+        path = vdoc['path']
+        offset = vdoc['counter']
 
-            size = len(data)
-            vdoc['counter'] += size
+        size = len(data)
+        vdoc['counter'] += size
 
-            with open(path, 'r+b') as f:
-                f.seek(offset)
-                f.write(data)
+        self.lock.release()
 
-            fdoc = dict()
-            fdoc['fid'] = fid
-            fdoc['offset'] = offset
-            fdoc['size'] = size
-            fdoc['delete'] = False
+        with open(path, 'r+b') as f:
+            f.seek(offset)
+            f.write(data)
 
-            self.vdb[vid] = vdoc
-            self._update_vdb()
+        fdoc = dict()
+        fdoc['fid'] = fid
+        fdoc['offset'] = offset
+        fdoc['size'] = size
+        fdoc['delete'] = False
 
-            self.fdb[fid] = fdoc
-            self._update_fdb()
+        self.vdb[vid] = vdoc
+        self._update_vdb()
 
-            return True
-        except:
-            return False
-        finally:
-            self.lock.release()
+        self.fdb[fid] = fdoc
+        self._update_fdb()
+
+        return True
 
     def update_file(self, fid, data):
         pass

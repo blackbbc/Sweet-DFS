@@ -43,7 +43,6 @@ class Master(SyncObj):
         self.lock = RWLock()
 
         self.act_vol_serv = dict()
-        self.act_vol_proxy = dict()
         self.writable_vid = list() # 可写的vid
 
         self.vid = ReplCounter()
@@ -57,7 +56,7 @@ class Master(SyncObj):
         pass
 
     def _recover(self, vid, dead_vid, from_vid, to_vid):
-        from_proxy = self.act_vol_proxy[from_vid]
+        from_proxy = ServerProxy(self.act_vol_serv[from_vid])
         to_addr = self.act_vol_serv[to_vid]
 
         self.logger.info('Begin to migrate volumn %d from %s to %s...!' % (vid, from_vid, to_vid))
@@ -106,11 +105,9 @@ class Master(SyncObj):
                 _thread.start_new_thread(self._check, (off_volumn,))
 
         self.act_vol_serv.clear()
-        self.act_vol_proxy.clear()
         self.writable_vid.clear()
         for volumn in volumns:
             self.act_vol_serv[volumn[0]] = volumn[1]
-            self.act_vol_proxy[volumn[0]] = ServerProxy(volumn[1])
 
         while not self._isReady():
             time.sleep(1)
@@ -130,7 +127,8 @@ class Master(SyncObj):
         vids = random.sample(self.act_vol_serv.keys(), 2)
 
         for vvid in vids:
-            self.act_vol_proxy[vvid].assign_volumn(vid, size)
+            s = ServerProxy(self.act_vol_serv[vvid])
+            s.assign_volumn(vid, size)
 
         self.db.set(vid, vids)
 
@@ -164,9 +162,10 @@ class Master(SyncObj):
 
         vol_status = dict()
 
-        for vol_serv, vol_serv_proxy in self.act_vol_proxy.items():
+        for vol_serv_id, vol_serv in self.act_vol_serv.items():
             try:
-                vv = vol_serv_proxy.status()
+                s = ServerProxy(vol_serv)
+                vv = s.status()
                 vol_status[vol_serv] = vv
             except:
                 pass
