@@ -153,7 +153,7 @@ class Master(SyncObj):
 
     def find_writable_volumn(self, vid):
         if vid in self.writable_vid:
-            return find_volumn(vid)
+            return self.find_volumn(vid)
         else:
             return []
 
@@ -166,7 +166,7 @@ class Master(SyncObj):
             try:
                 s = ServerProxy(vol_serv)
                 vv = s.status()
-                vol_status[vol_serv] = vv
+                vol_status[vol_serv_id] = vv
             except:
                 pass
 

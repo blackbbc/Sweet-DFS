@@ -16,7 +16,7 @@ from threadxmlrpc import ThreadXMLRPCServer
 
 class Volumn(object):
 
-    _rpc_methods = ['assign_volumn', 'store', 'replica', 'download', 'status',
+    _rpc_methods = ['assign_volumn', 'store', 'replica', 'download', 'status', 'balance',
             'migrate_volumn_to', 'migrate_volumn_from', 'delete_file', 'delete_volumn']
 
     def __init__(self, logger, host, port):
@@ -95,7 +95,7 @@ class Volumn(object):
                     if data:
                         s.migrate_volumn_from(vid, data, vdoc)
                     else:
-                        fdocs = {k: v for k, v in self.fdb if k.startwith('%d,' % vid)}
+                        fdocs = {k: v for k, v in self.fdb if k.startswith('%d,' % vid)}
                         s.migrate_volumn_from(vid, data, vdoc, fdocs, True)
                         break
 
@@ -127,7 +127,10 @@ class Volumn(object):
         try:
             self.replica(fid, data)
             master = self.get_master()
-            volumns = master.find_volumn(vid)
+            volumns = master.find_writable_volumn(vid)
+
+            if not volumns:
+                return False
 
             for volumn in volumns:
                 if volumn != 'http://%s:%d' % (self.host, self.port):
@@ -176,16 +179,33 @@ class Volumn(object):
     def update_file(self, fid, data):
         pass
 
-    def delete_file(self, fid):
+    def delete_file(self, fid, sync=True):
         vid, _ = fid.split(',')
         vid = int(vid)
 
-        fdoc = self.fdb[fid]
-        fdoc['delete'] = True
+        try:
+            if sync:
+                master = self.get_master()
+                volumns = master.find_writable_volumn(vid)
 
-        self._update_fdb()
+                if not volumns:
+                    return False
 
-        return True
+                for volumn in volumns:
+                    if volumn != 'http://%s:%d' % (self.host, self.port):
+                        s = ServerProxy(volumn)
+                        s.delete_file(fid, False)
+
+            fdoc = self.fdb[fid]
+            fdoc['delete'] = True
+
+            self._update_fdb()
+
+            return True
+        except Exception as e:
+            self.logger.exception('Got an exception')
+            return False
+
 
     def delete_volumn(self, vid):
         pass
@@ -242,7 +262,7 @@ class Volumn(object):
             with open(path, 'r+b') as from_file, open(path + '.tmp', 'r+b') as to_file:
                 to_file.seek(0)
                 for fdoc in fdocs.values():
-                    if fdoc['fid'].startwith('%d,' % vid) and fdoc['delete'] == False:
+                    if fdoc['fid'].startswith('%d,' % vid) and fdoc['delete'] == False:
                         from_file.seek(fdoc['size'])
                         data = from_file.read(fdoc['size'])
                         to_file.write(data)
@@ -252,11 +272,15 @@ class Volumn(object):
                         tvdoc['counter'] += fdoc['size']
                         tfdocs[fdoc['fid']] = tfdoc
 
-                self.vdb[vid] = tvdoc
-                self.fdocs = tfdocs
+            os.remove(path)
+            os.rename(path + '.tmp', path)
+
+            self.vdb[vid] = tvdoc
+            self.fdocs = tfdocs
 
             return True
         except:
+            self.logger.exception('Got an exception')
             return False
         finally:
             self.lock.release()

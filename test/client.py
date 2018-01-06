@@ -237,34 +237,62 @@ def assign(size):
     print(vid)
 
 def delete(filename):
-    # 大文件的话，需要检查所有的chunk都可写
+    fdoc = fdb[filename]
 
-    # if not os.path.isfile(path):
-        # print('%s not exist' % path)
-        # return
+    master = get_master()
 
-    # fdoc = fdb[filename]
+    fid = fdoc['fid']
+    vid, fkey = fid.split(',')
+    volumns = master.find_writable_volumn(int(vid))
 
-    # master = get_master()
+    if volumns:
+        if fdoc['chunk']:
+            s = ServerProxy(random.choice(volumns))
+            s.delete_file(fid)
 
-    # fid = fdoc['fid']
-    # vid, fkey = fid.split(',')
-    # volumns = master.find_writable_volumn(int(vid))
+            fdb.pop(filename, None)
+            update_db()
 
-    # if fdoc['chunk']:
+            print('Delete file %s success' % filename)
+        else:
+            s = ServerProxy(random.choice(volumns))
+            ffids = json.loads(s.download(fid).data)
 
-        # if not volumns:
-            # print('Delete file failed. Read only volumn')
-            # return
+            vvids = list()
+            for ffid in ffids:
+                vid, _ = ffid.split(',')
+                volumns = master.find_writable_volumn(int(vid))
+                if volumns:
+                    vvids.append(volumns)
+                else:
+                    print('Delete file failed. Volumn is read only.')
+                    return
 
-        # for volumn in volumns:
-            # s = ServerProxy(volumn)
-            # s.delete_file(fid)
+            for ffid, volumns in zip(ffids, vvids):
+                ss = ServerProxy(random.choice(volumns))
+                ss.delete_file(ffid)
 
-        # print('Delete %s success.' % filename)
-    # else:
+            s.delete_file(fid)
 
-    pass
+            fdb.pop(filename, None)
+            update_db()
+
+            print('Delete file %s success' % filename)
+
+    else:
+        print('Delete file failed. Volumn is read only.')
+
+def balance(vid):
+    master = get_master()
+    volumns = master.find_writable_volumn(int(vid))
+
+    if volumns:
+        for volumn in volumns:
+            s = ServerProxy(volumn)
+            s.balance(int(vid))
+        print('Balance volumn success')
+    else:
+        print('Balance volumn failed. Volumn not writable')
 
 
 def status():
@@ -299,6 +327,8 @@ def main():
             assign(cmd[1])
         elif cmd[0] == 'delete':
             delete(cmd[1])
+        elif cmd[0] == 'balance':
+            balance(cmd[1])
         elif cmd[0] == 'status':
             status()
 
