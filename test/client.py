@@ -282,7 +282,11 @@ def status():
 
 def main():
     while True:
-        cmd = input(">> ").split()
+        try:
+            cmd = input(">> ").split()
+        except:
+            print('\nBye~')
+            return
         if not cmd:
             continue
         elif cmd[0] == 'ls':

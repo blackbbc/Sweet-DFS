@@ -7,7 +7,7 @@ import threading
 
 import client
 
-class UploadThread(threading.Thread):
+class DownloadThread(threading.Thread):
 
     def __init__(self, begin, end):
         threading.Thread.__init__(self)
@@ -16,7 +16,7 @@ class UploadThread(threading.Thread):
 
     def run(self):
         for i in range(self.begin, self.end):
-            client.upload('inputs/%d' % i)
+            client.download(str(i))
         print(i)
 
 size = 10000
@@ -29,8 +29,7 @@ def main():
     threads = list()
 
     for i in range(1, size + 1, step):
-        # print(i, i + step)
-        thread = UploadThread(i, i + step)
+        thread = DownloadThread(i, i + step)
         thread.start()
         threads.append(thread)
 
@@ -39,7 +38,7 @@ def main():
 
     end_time = timeit.default_timer()
 
-    print('Upload {} files: {}'.format(size, end_time - start_time))
+    print('Download {} files: {}'.format(size, end_time - start_time))
 
 if __name__ == '__main__':
     main()
