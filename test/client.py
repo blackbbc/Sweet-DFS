@@ -150,7 +150,7 @@ def upload(path):
 
                 usize -= CHUNK_SIZE
 
-                print('%d%% uploaded.' % ((size - usize) / size * 100))
+                print('%d%% uploaded.' % (min((size - usize) / size * 100, 100)))
 
         data = json.dumps(fids).encode()
 
@@ -295,9 +295,9 @@ def balance(vid):
         print('Balance volumn failed. Volumn not writable')
 
 
-def status():
+def volumn_status():
     master = get_master()
-    ss = master.status()
+    ss = master.volumn_status()
 
     print('{0:<10s} {1:<10s} {2:<10s} {3:<10s} {4}/{5}'.format('Volumn Id',
         'Total Size', 'Used Size', 'Free Size', 'Available Node', 'Total Node'))
@@ -307,6 +307,21 @@ def status():
             format_size(sdoc['used_size']),
             format_size(sdoc['free_size']),
             sdoc['ava_node_num'], sdoc['tat_node_num']))
+
+def node_status():
+    master = get_master()
+    ss = master.node_status()
+
+    print('{0:<10s} {1:<25s} {2:<10s} {3:<10s} {4:<10s} {5:<10s}'.format('Node Id', 'Node Address',
+        'Total Size', 'Used Size', 'Free Size', 'Nodes'))
+    for nid, ndoc in ss.items():
+        print('{0:<10s} {1:<25s} {2:<10s} {3:<10s} {4:<10s} {5:<10s}'.format(nid[:5],
+            ndoc['addr'],
+            format_size(int(ndoc['total'])),
+            format_size(int(ndoc['used'])),
+            format_size(int(ndoc['free'])),
+            str(ndoc['nodes'])))
+
 
 def main():
     while True:
@@ -329,8 +344,10 @@ def main():
             delete(cmd[1])
         elif cmd[0] == 'balance':
             balance(cmd[1])
-        elif cmd[0] == 'status':
-            status()
+        elif cmd[0] == 'volumn_status':
+            volumn_status()
+        elif cmd[0] == 'node_status':
+            node_status()
 
 if __name__ == '__main__':
     main()

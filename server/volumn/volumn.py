@@ -94,8 +94,10 @@ class Volumn(object):
                     data = f.read(64*1024*1024)
                     if data:
                         s.migrate_volumn_from(vid, data, vdoc)
+                        self.logger.info('Send data...')
                     else:
                         fdocs = {k: v for k, v in self.fdb if k.startswith('%d,' % vid)}
+                        self.logger.info('Ready to send metadata', str(vdoc), str(fdocs))
                         s.migrate_volumn_from(vid, data, vdoc, fdocs, True)
                         break
 
@@ -109,14 +111,21 @@ class Volumn(object):
         if not os.path.isdir('data'):
             os.mkdir('data')
 
-        with open(path, 'ab') as f:
-            f.write(data.data)
-
         if done:
+            self.logger.info(str(self.vdb), str(self.fdb))
+            self.logger.info(str(self.vid), str(self.vdoc), str(self.fdocs))
+
             self.vdb[vid] = vdoc
             self._update_vdb()
             self.fdb = {**self.fdb, **fdocs}
             self._update_fdb()
+
+            self.logger.info(str(self.vdb), (self.fdb))
+        else:
+            with open(path, 'ab') as f:
+                f.write(data.data)
+
+
 
         return True
 
@@ -288,6 +297,8 @@ class Volumn(object):
     def status(self):
         status = dict()
         total, used, free = shutil.disk_usage(__file__)
+        status['total'] = str(total)
+        status['used'] = str(used)
         status['free'] = str(free)
         status['vdb'] = {str(vid):vdoc for vid, vdoc in self.vdb.items()}
         return status

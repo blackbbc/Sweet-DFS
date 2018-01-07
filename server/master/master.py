@@ -12,7 +12,7 @@ import _thread
 from xmlrpc.client import ServerProxy
 from xmlrpc.server import SimpleXMLRPCServer
 from pysyncobj import SyncObj, SyncObjConf, replicated
-from pysyncobj.batteries import ReplCounter, ReplDict
+from pysyncobj.batteries import ReplCounter, ReplDict, ReplList
 
 from rwlock import RWLock
 from threadxmlrpc import ThreadXMLRPCServer
@@ -21,7 +21,8 @@ import config
 
 class Master(SyncObj):
 
-    _rpc_methods = ['assign_volumn', 'assign_fid', 'find_volumn', 'find_writable_volumn', 'status']
+    _rpc_methods = ['assign_volumn', 'assign_fid', 'find_volumn', 'find_writable_volumn',
+            'volumn_status', 'node_status']
 
     def __init__(self, logger, host, port):
         cfg = SyncObjConf()
@@ -43,13 +44,13 @@ class Master(SyncObj):
         self.lock = RWLock()
 
         self.act_vol_serv = dict()
-        self.writable_vid = list() # 可写的vid
+        self.writable_vid = ReplList() # 可写的vid
 
         self.vid = ReplCounter()
         self.fkey = ReplCounter()
         self.db = ReplDict()
 
-        super(Master, self).__init__(config.addr, config.clusters, cfg, consumers=[self.vid, self.fkey, self.db])
+        super(Master, self).__init__(config.addr, config.clusters, cfg, consumers=[self.vid, self.fkey, self.db, self.writable_vid])
 
 
     def update_master(self, masters):
@@ -95,6 +96,11 @@ class Master(SyncObj):
                         break
 
     def update_writable_volumn(self):
+        if not self._isLeader():
+            return
+
+        writable_vid = list()
+
         for vid, vvids in self.db.items():
             flag = True
             for vvid in vvids:
@@ -102,7 +108,9 @@ class Master(SyncObj):
                     flag = False
                     break
             if flag:
-                self.writable_vid.append(vid)
+                writable_vid.append(vid)
+
+        self.writable_vid.reset(writable_vid, sync=True)
 
 
     # 检查volumn下线的情况，搬运
@@ -120,7 +128,6 @@ class Master(SyncObj):
                 _thread.start_new_thread(self._check, (off_volumn,))
 
         self.act_vol_serv.clear()
-        self.writable_vid.clear()
         for volumn in volumns:
             self.act_vol_serv[volumn[0]] = volumn[1]
 
@@ -169,7 +176,7 @@ class Master(SyncObj):
         else:
             return []
 
-    def status(self):
+    def volumn_status(self):
         res = dict()
 
         vol_status = dict()
@@ -203,6 +210,28 @@ class Master(SyncObj):
             res[str(vid)] = sdoc
 
         return res
+
+    def node_status(self):
+        res = dict()
+
+        for vol_serv_id, vol_serv in self.act_vol_serv.items():
+            try:
+                s = ServerProxy(vol_serv)
+                vv = s.status()
+
+                vol_status = dict()
+                vol_status['addr'] = vol_serv
+                vol_status['total'] = vv['total']
+                vol_status['used'] = vv['used']
+                vol_status['free'] = vv['free']
+                vol_status['nodes'] = list(vv['vdb'].keys())
+
+                res[vol_serv_id] = vol_status
+            except:
+                pass
+
+        return res
+
 
     def start(self):
         self.logger.info('Start serving at %s:%d' % (self.host, self.port))
