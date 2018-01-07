@@ -66,6 +66,7 @@ class Master(SyncObj):
         vids.remove(dead_vid)
         vids.append(to_vid)
         self.db.set(vid, vids)
+        self.update_writable_volumn()
         self.logger.info('Remove %s, append %s' % (dead_vid, to_vid))
 
     def _check(self, dead_vid):
@@ -93,6 +94,17 @@ class Master(SyncObj):
                             self.logger.warn('No available volumns to migrate')
                         break
 
+    def update_writable_volumn(self):
+        for vid, vvids in self.db.items():
+            flag = True
+            for vvid in vvids:
+                if vvid not in self.act_vol_serv.keys():
+                    flag = False
+                    break
+            if flag:
+                self.writable_vid.append(vid)
+
+
     # 检查volumn下线的情况，搬运
     def update_volumn(self, volumns):
         if self._isLeader():
@@ -115,15 +127,6 @@ class Master(SyncObj):
         while not self._isReady():
             time.sleep(1)
 
-        for vid, vvids in self.db.items():
-            flag = True
-            for vvid in vvids:
-                if vvid not in self.act_vol_serv.keys():
-                    flag = False
-                    break
-            if flag:
-                self.writable_vid.append(vid)
-
     def assign_volumn(self, size):
         vid = self.vid.inc(sync=True)
 
@@ -134,10 +137,14 @@ class Master(SyncObj):
             s.assign_volumn(vid, size)
 
         self.db.set(vid, vids)
+        self.update_writable_volumn()
 
         return vid
 
     def assign_fid(self):
+        if not self.writable_vid:
+            return ''
+
         vid = random.choice(list(self.writable_vid))
         fkey = self.fkey.inc(sync=True)
 
