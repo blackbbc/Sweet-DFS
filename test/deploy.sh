@@ -32,7 +32,9 @@ rm client.py
 rm client.log
 rm fdb
 rm outputs/client.py
+rm outputs/client.log
 rm outputs/fdb
 
 cp /home/sweet/DFS/client/client.py client.py
 cp /home/sweet/DFS/client/client.py outputs/client.py
+cp test_download.py outputs/test_download.py

@@ -20,7 +20,7 @@ class UploadThread(threading.Thread):
         print(i)
 
 size = 10000
-step = 1000
+step = 625
 
 def main():
 

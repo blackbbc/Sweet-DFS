@@ -213,7 +213,7 @@ def download(filename):
         with open(filename, 'wb') as file:
             file.write(data)
 
-        print('Download success')
+        print('Download %s success' % filename)
     else:
         fids = json.loads(data)
 
@@ -226,7 +226,7 @@ def download(filename):
                     return
                 file.write(data)
 
-        print('Download success')
+        print('Download %s success' % filename)
 
 def assign(size):
     size = int(size)
