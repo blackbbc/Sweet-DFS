@@ -61,9 +61,12 @@ class Master(SyncObj):
 
         self.logger.info('Begin to migrate volumn %d from %s to %s...!' % (vid, from_vid, to_vid))
         from_proxy.migrate_volumn_to(vid, to_addr)
-        self.db[vid].remove(dead_vid)
-        self.db[vid].append(to_vid)
         self.logger.info('Migrate volumn %d from %s to %s succeed!' % (vid, from_vid, to_vid))
+        vids = self.db[vid]
+        vids.remove(dead_vid)
+        vids.append(to_vid)
+        self.db.set(vid, vids)
+        self.logger.info('Remove %s, append %s' % (dead_vid, to_vid))
 
     def _check(self, dead_vid):
         self.logger.info('Monitor dead volumn server %s ...' % dead_vid)
