@@ -65,7 +65,7 @@ class Master(SyncObj):
         vids = self.db[vid]
         vids.remove(dead_vid)
         vids.append(to_vid)
-        self.db.set(vid, vids)
+        self.db.set(vid, vids, sync=True)
         self.update_writable_volumn()
         self.logger.info('Remove %s, append %s' % (dead_vid, to_vid))
 
@@ -127,6 +127,8 @@ class Master(SyncObj):
         while not self._isReady():
             time.sleep(1)
 
+        self.update_writable_volumn()
+
     def assign_volumn(self, size):
         vid = self.vid.inc(sync=True)
 
@@ -136,7 +138,7 @@ class Master(SyncObj):
             s = ServerProxy(self.act_vol_serv[vvid])
             s.assign_volumn(vid, size)
 
-        self.db.set(vid, vids)
+        self.db.set(vid, vids, sync=True)
         self.update_writable_volumn()
 
         return vid

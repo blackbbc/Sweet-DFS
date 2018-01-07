@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 *.log
 *.bin
+*.mp4
 vdb
 fdb
 inputs/
