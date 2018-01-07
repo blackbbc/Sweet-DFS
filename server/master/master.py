@@ -95,8 +95,8 @@ class Master(SyncObj):
                             self.logger.warn('No available volumns to migrate')
                         break
 
-    def update_writable_volumn(self):
-        if not self._isLeader():
+    def update_writable_volumn(self, checkLeader=True):
+        if checkLeader and not self._isLeader():
             return
 
         writable_vid = list()
@@ -146,7 +146,7 @@ class Master(SyncObj):
             s.assign_volumn(vid, size)
 
         self.db.set(vid, vids, sync=True)
-        self.update_writable_volumn()
+        self.update_writable_volumn(False)
 
         return vid
 
