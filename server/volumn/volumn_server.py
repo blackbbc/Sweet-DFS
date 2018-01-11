@@ -2,6 +2,7 @@
 
 import os
 import sys
+sys.path.insert(0, '../util')
 import uuid
 import time
 import pickle
@@ -12,6 +13,8 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 
 from volumn import Volumn
+
+import ip_util
 
 # 获取logger实例，如果参数为空则返回root logger
 logger = logging.getLogger()
@@ -42,7 +45,17 @@ else:
     config['id'] = uuid.uuid4().hex
     pickle.dump(config, open('config', 'wb'))
 
-zk = KazooClient(hosts='127.0.0.1:2181')
+zkServs = ['10.60.45.60', '10.60.45.61', '10.60.45.63']
+
+while True:
+    index = 0
+    zk = KazooClient(hosts=zkServs[index])
+    try:
+        zk.start()
+        break
+    except:
+        index = (index + 1) % 3
+        continue
 
 def get_free_tcp_port():
     tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -51,9 +64,9 @@ def get_free_tcp_port():
     tcp.close()
     return port
 
+host = ip_util.find_ip('eth1')
 port = get_free_tcp_port()
-volumn = Volumn(logger, 'localhost', port)
-
+volumn = Volumn(logger, host, port)
 
 @zk.ChildrenWatch('/master')
 def on_volumn_change(children):
@@ -69,7 +82,7 @@ def main():
 
     while True:
         try:
-            zk.create('/volumn/%s' % config['id'], ('http://%s:%d' % ('localhost', port)).encode(), ephemeral=True, makepath=True)
+            zk.create('/volumn/%s' % config['id'], ('http://%s:%d' % (host, port)).encode(), ephemeral=True, makepath=True)
             logger.info('Registered in zookeeper')
             break
         except NodeExistsError as e:
