@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+sys.path.insert(0, '../util')
 import time
 import socket
 import logging
@@ -10,6 +11,8 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 
 from master import Master
+
+import ip_util
 
 # 获取logger实例，如果参数为空则返回root logger
 logger = logging.getLogger()
@@ -51,8 +54,10 @@ def get_free_tcp_port():
     tcp.close()
     return port
 
+host = ip_util.find_ip('eth1')
 port = get_free_tcp_port()
-master = Master(logger, 'localhost', port)
+
+master = Master(logger, host, port)
 
 @zk.ChildrenWatch('/volumn')
 def on_volumn_change(children):
@@ -67,7 +72,7 @@ def main():
 
     while True:
         try:
-            zk.create('/master/%s' % uuid.uuid4().hex, ('http://%s:%d' % ('localhost', port)).encode(), ephemeral=True, makepath=True )
+            zk.create('/master/%s' % uuid.uuid4().hex, ('http://%s:%d' % (host, port)).encode(), ephemeral=True, makepath=True )
             logger.info('Registered in zookeeper')
             break
         except NodeExistsError as e:

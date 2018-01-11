@@ -3,3 +3,4 @@ humanfriendly==4.4.1
 pysyncobj==0.3.3
 Werkzeug==0.12.2
 kazoo==2.4.0
+netifaces==0.10.6
