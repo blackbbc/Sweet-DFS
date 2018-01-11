@@ -41,8 +41,16 @@ logger.addHandler(console_handler)
 # 指定日志的最低输出级别，默认为WARN级别
 logger.setLevel(logging.INFO)
 
-zk = KazooClient(hosts='127.0.0.1:2181')
-zk.start()
+zkServs = ['10.60.45.60', '10.60.45.61', '10.60.45.63']
+while True:
+    index = 0
+    zk = KazooClient(hosts=zkServs[index])
+    try:
+        zk.start()
+        break
+    except:
+        index = (index + 1) % 3
+        continue
 
 UPLOAD_FOLDER = 'uploads'
 
