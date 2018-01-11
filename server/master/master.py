@@ -226,9 +226,14 @@ class Master(SyncObj):
                 vol_status['free'] = vv['free']
                 vol_status['nodes'] = list(vv['vdb'].keys())
 
+                for node in vol_status['nodes']:
+                    vids = self.db.get(int(node), [])
+                    if vol_serv_id not in vids:
+                        vol_status['nodes'].remove(node)
+
                 res[vol_serv_id] = vol_status
             except:
-                pass
+                self.logger.exception('Got an exception')
 
         return res
 
